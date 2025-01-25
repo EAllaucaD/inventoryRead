@@ -1,0 +1,38 @@
+openapi: 3.0.0
+info:
+  title: Inventory Service
+  description: Service for managing inventories with medicines
+  version: 1.0.0
+servers:
+  - url: 'http://localhost:3012'
+    description: Local development server
+
+paths:
+  /api/inventory/specific:
+    get:
+      summary: Get medicines with specific fields (MedicationName, ElaborationDate, ExpirationDate, Type, Status)
+      operationId: getSpecificInventory
+      responses:
+        200:
+          description: List of medicines in the inventory
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    MedicamentName:
+                      type: string
+                    ElaborationDate:
+                      type: string
+                    ExpirationDate:
+                      type: string
+                    Type:
+                      type: string
+                    Status:
+                      type: string
+        404:
+          description: No medications found
+        500:
+          description: Server error

@@ -5,7 +5,7 @@ async function getSpecificInventory(req, res) {
   try {
     // We only select MedicationName, ExpirationDate, and Type
     const result = await pool.query(`
-      SELECT MedicamentName, ExpirationDate, Type
+      SELECT MedicamentName, ElaborationDate, ExpirationDate, Type, Status
       FROM inventory
       ORDER BY ExpirationDate ASC
     `);
