@@ -103,7 +103,7 @@ jobs:
 
           # Run the new container
           echo "Running new container..."
-          sudo docker run -d -p 3010:3010 --restart unless-stopped --name inventoryread-container \
+          sudo docker run -d -p 3012:3012 --restart unless-stopped --name inventoryread-container \
             -e HOST_DB=${{ secrets.HOST_DB }} \
             -e USER_DB=${{ secrets.USER_DB }} \
             -e PASSWORD_DB=${{ secrets.PASSWORD_DB }} \
