@@ -1,4 +1,4 @@
-name: CI Pipeline
+name: CI/CD Pipeline
 
 on:
   push:
@@ -8,8 +8,7 @@ on:
 
 jobs:
 
-  build:
-
+  build-and-push:
     runs-on: ubuntu-latest
 
     steps:
@@ -17,40 +16,98 @@ jobs:
 
     - name: Manage Swagger Documentation
       run: |
-          if [[ "${{ github.ref }}" == "refs/heads/dev" ]] || [[ "${{ github.event.pull_request.base.ref }}" == "QA" ]]; then
-            echo "Including swagger.yaml for dev or QA."
-            cp ./src/docs/swagger.yaml ./swagger.yaml
-          elif [[ "${{ github.event.pull_request.base.ref }}" == "main" ]]; then
-            echo "Excluding swagger.yaml for production."
-            rm -f ./src/docs/swagger.yaml
-          fi
-          
+        if [[ "${{ github.ref }}" == "refs/heads/dev" ]] || [[ "${{ github.event.pull_request.base.ref }}" == "QA" ]]; then
+          echo "Including swagger.yaml for dev or QA."
+          cp ./src/docs/swagger.yaml ./swagger.yaml
+        elif [[ "${{ github.event.pull_request.base.ref }}" == "main" ]]; then
+          echo "Excluding swagger.yaml for production."
+          rm -f ./src/docs/swagger.yaml
+        fi
 
-    - name: Login Dockerhub
+    - name: Login to Docker Hub
       env:
         DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
         DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
       run: docker login -u $DOCKER_USERNAME -p $DOCKER_PASSWORD
-      
-    - name: Build the Docker image
+
+    - name: Build and tag the Docker image
       run: |
-          if [[ "${{ github.ref }}" == "refs/heads/dev" ]]; then
-            docker build -t ${{ secrets.DOCKER_USERNAME }}/inventoryread:dev .
-          elif [[ "${{ github.event.pull_request.base.ref }}" == "main" ]]; then
-            docker build -t ${{ secrets.DOCKER_USERNAME }}/inventoryread:prod .
-          elif [[ "${{ github.event.pull_request.base.ref }}" == "QA" ]]; then
-            docker build -t ${{ secrets.DOCKER_USERNAME }}/inventoryread:qa .
+        if [[ "${{ github.ref }}" == "refs/heads/dev" ]]; then
+          docker build -t ${{ secrets.DOCKER_USERNAME }}/inventoryread:dev .
+        elif [[ "${{ github.event.pull_request.base.ref }}" == "main" ]]; then
+          docker build -t ${{ secrets.DOCKER_USERNAME }}/inventoryread:prod .
+        elif [[ "${{ github.event.pull_request.base.ref }}" == "QA" ]]; then
+          docker build -t ${{ secrets.DOCKER_USERNAME }}/inventoryread:qa .
+        else
+          echo "Invalid branch for building Docker image."
+          exit 1
+        fi
+
+    - name: Push to Docker Hub
+      run: |
+        if [[ "${{ github.ref }}" == "refs/heads/dev" ]]; then
+          docker push ${{ secrets.DOCKER_USERNAME }}/inventoryread:dev
+        elif [[ "${{ github.event.pull_request.base.ref }}" == "main" ]]; then
+          docker push ${{ secrets.DOCKER_USERNAME }}/inventoryread:prod
+        elif [[ "${{ github.event.pull_request.base.ref }}" == "QA" ]]; then
+          docker push ${{ secrets.DOCKER_USERNAME }}/inventoryread:qa
+        fi
+
+  deploy:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    if: |
+      github.event_name == 'push' && github.ref == 'refs/heads/dev' ||
+      github.event_name == 'pull_request' && (github.event.pull_request.base.ref == 'QA' || github.event.pull_request.base.ref == 'main')
+
+    steps:
+    - name: Deploy to EC2
+      uses: appleboy/ssh-action@v1.2.0
+      with:
+        host: ${{ secrets.EC2_HOST }}
+        username: ubuntu
+        key: ${{ secrets.EC2_KEY }}
+        script: |
+          # Install Docker if not already installed
+          if ! command -v docker &> /dev/null; then
+            echo "Installing Docker..."
+            sudo apt update
+            sudo apt install -y docker.io
+            sudo systemctl start docker
+            sudo systemctl enable docker
+            sudo usermod -aG docker $USER
+            sudo systemctl restart docker
           else
-            echo "Invalid branch for building Docker image."
+            echo "Docker is already installed."
+          fi
+
+          if [[ "${{ github.ref }}" == "refs/heads/dev" ]]; then
+            TAG="dev"
+          elif [[ "${{ github.event.pull_request.base.ref }}" == "QA" ]]; then
+            TAG="qa"
+          elif [[ "${{ github.event.pull_request.base.ref }}" == "main" ]]; then
+            TAG="prod"
+          else
+            echo "Invalid branch for deployment."
             exit 1
           fi
-          
-    - name: Push to Dockerhub
-      run: |
-          if [[ "${{ github.ref }}" == "refs/heads/dev" ]]; then
-            docker push ${{ secrets.DOCKER_USERNAME }}/inventoryread:dev
-          elif [[ "${{ github.event.pull_request.base.ref }}" == "main" ]]; then
-            docker push ${{ secrets.DOCKER_USERNAME }}/inventoryread:prod
-          elif [[ "${{ github.event.pull_request.base.ref }}" == "QA" ]]; then
-            docker push ${{ secrets.DOCKER_USERNAME }}/inventoryread:qa
-          fi
+
+          # Pull the Docker image
+          echo "Pulling Docker image with tag: $TAG"
+          sudo docker pull ${{ secrets.DOCKER_USERNAME }}/inventoryread:$TAG
+
+          # Stop and remove the old container
+          echo "Stopping and removing old container..."
+          sudo docker stop inventoryread-container || true
+          sudo docker rm -f inventoryread-container || true
+
+          # Run the new container
+          echo "Running new container..."
+          sudo docker run -d -p 3010:3010 --restart unless-stopped --name inventoryread-container \
+            -e HOST_DB=${{ secrets.HOST_DB }} \
+            -e USER_DB=${{ secrets.USER_DB }} \
+            -e PASSWORD_DB=${{ secrets.PASSWORD_DB }} \
+            -e DATABASE_NAME=${{ secrets.DATABASE_NAME }} \
+            -e JWT_SECRET=${{ secrets.JWT_SECRET }} \
+            -e PORT=${{ secrets.PORT }} \
+            ${{ secrets.DOCKER_USERNAME }}/inventoryread:$TAG
