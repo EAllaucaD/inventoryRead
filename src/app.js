@@ -4,6 +4,8 @@ const YAML = require('yaml');
 const fs = require('fs');
 const path = require('path');
 const swaggerUi = require('swagger-ui-express');
+const client = require('prom-client');
+
 require('dotenv').config();
 
 const inventoryRoutes = require('./routes/inventoryRoutes');
