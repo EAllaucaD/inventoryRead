@@ -9,7 +9,7 @@ require('dotenv').config();
 const inventoryRoutes = require('./routes/inventoryRoutes');
 
 const app = express();
-const PORT = process.env.PORT || 3012;
+const port = process.env.PORT || 3012;
 
 // Middleware
 app.use(cors());
@@ -29,7 +29,7 @@ app.use((err, req, res, next) => {
   res.status(500).json({ message: 'Error on the server.' });
 });
 
-app.listen(PORT, () => {
-  console.log(`Server run in http://localhost:${PORT}`);
-  console.log(`Swagger docs available at http://localhost:${PORT}/api-docs`);
+app.listen(port, () => {
+  console.log(`Server run in http://localhost:${port}`);
+  console.log(`Swagger docs available at http://localhost:${port}/api-docs`);
 });
