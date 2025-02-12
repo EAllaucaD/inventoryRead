@@ -82,6 +82,7 @@ jobs:
             echo "Docker is already installed."
           fi
 
+          # Set the tag for the Docker image
           if [[ "${{ github.ref }}" == "refs/heads/dev" ]]; then
             TAG="dev"
           elif [[ "${{ github.event.pull_request.base.ref }}" == "QA" ]]; then
