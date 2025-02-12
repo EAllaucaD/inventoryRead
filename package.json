@@ -16,6 +16,7 @@
     "express": "^4.21.2",
     "jsonwebtoken": "^9.0.2",
     "mariadb": "^3.4.0",
+    "prom-client": "^11.5.3",
     "swagger-ui-express": "^5.0.1",
     "yaml": "^2.7.0"
   }

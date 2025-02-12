@@ -16,7 +16,6 @@ jobs:
 
     - name: Manage Swagger Documentation
       run: |
-
         if [[ "${{ github.ref }}" == "refs/heads/dev" ]] || [[ "${{ github.event.pull_request.base.ref }}" == "QA" ]]; then
           echo "Including swagger.yaml for dev or QA."
           cp ./src/docs/swagger.yaml ./swagger.yaml
@@ -26,22 +25,11 @@ jobs:
         fi
 
     - name: Login to Docker Hub
-
-          if [[ "${{ github.ref }}" == "refs/heads/dev" ]] || [[ "${{ github.event.pull_request.base.ref }}" == "QA" ]]; then
-            echo "Including swagger.yaml for dev or QA."
-            cp ./src/docs/swagger.yaml ./swagger.yaml
-          elif [[ "${{ github.event.pull_request.base.ref }}" == "main" ]]; then
-            echo "Excluding swagger.yaml for production."
-            rm -f ./src/docs/swagger.yaml
-          fi
-          
-
-    - name: Login Dockerhub
-
       env:
         DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
         DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
-      run: docker login -u $DOCKER_USERNAME -p $DOCKER_PASSWORD
+      run: |
+        docker login -u $DOCKER_USERNAME -p $DOCKER_PASSWORD
 
     - name: Build and tag the Docker image
       run: |
@@ -94,6 +82,7 @@ jobs:
             echo "Docker is already installed."
           fi
 
+          # Set the tag for the Docker image
           if [[ "${{ github.ref }}" == "refs/heads/dev" ]]; then
             TAG="dev"
           elif [[ "${{ github.event.pull_request.base.ref }}" == "QA" ]]; then
@@ -109,7 +98,7 @@ jobs:
           echo "Pulling Docker image with tag: $TAG"
           sudo docker pull ${{ secrets.DOCKER_USERNAME }}/inventoryread:$TAG
 
-          # Stop and remove the old container
+          # Stop and remove the old container (force removal if necessary)
           echo "Stopping and removing old container..."
           sudo docker stop inventoryread-container || true
           sudo docker rm -f inventoryread-container || true
