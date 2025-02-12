@@ -14,7 +14,7 @@ const pool = mariadb.createPool({
 async function testConnection() {
   try {
     const res = await pool.query('SELECT NOW()');
-    console.log("Connection successful:", res.rows);
+    console.log("Connection successful:", res);
   } catch (err) {
     console.error("Connection error:", err);
   }
