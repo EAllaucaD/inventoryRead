@@ -7,6 +7,7 @@ on:
     branches: ["main", "QA"]
 
 jobs:
+
   build-and-push:
     runs-on: ubuntu-latest
 
@@ -96,7 +97,7 @@ jobs:
           echo "Pulling Docker image with tag: $TAG"
           sudo docker pull ${{ secrets.DOCKER_USERNAME }}/inventoryread:$TAG
 
-          # Stop and remove the old container
+          # Stop and remove the old container (force removal if necessary)
           echo "Stopping and removing old container..."
           sudo docker stop inventoryread-container || true
           sudo docker rm -f inventoryread-container || true
