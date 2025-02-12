@@ -16,6 +16,7 @@ jobs:
 
     - name: Manage Swagger Documentation
       run: |
+
         if [[ "${{ github.ref }}" == "refs/heads/dev" ]] || [[ "${{ github.event.pull_request.base.ref }}" == "QA" ]]; then
           echo "Including swagger.yaml for dev or QA."
           cp ./src/docs/swagger.yaml ./swagger.yaml
@@ -30,6 +31,27 @@ jobs:
         DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
       run: |
         docker login -u $DOCKER_USERNAME -p $DOCKER_PASSWORD
+
+    - name: Build and tag the Docker image
+      run: |
+
+    - name: Login to Docker Hub
+
+          if [[ "${{ github.ref }}" == "refs/heads/dev" ]] || [[ "${{ github.event.pull_request.base.ref }}" == "QA" ]]; then
+            echo "Including swagger.yaml for dev or QA."
+            cp ./src/docs/swagger.yaml ./swagger.yaml
+          elif [[ "${{ github.event.pull_request.base.ref }}" == "main" ]]; then
+            echo "Excluding swagger.yaml for production."
+            rm -f ./src/docs/swagger.yaml
+          fi
+          
+
+    - name: Login Dockerhub
+
+      env:
+        DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+        DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+      run: docker login -u $DOCKER_USERNAME -p $DOCKER_PASSWORD
 
     - name: Build and tag the Docker image
       run: |
